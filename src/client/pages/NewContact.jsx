@@ -29,7 +29,7 @@ const NewContact = () => {
 
   const handleContactSubmit = async (values, { resetForm }) => {
     try {
-      const response = await axios.post("/api/v1/contact/create", {
+      const response = await axios.post("/api/v1/contact", {
         firstName: values.firstName,
         lastName: values.lastName,
         email: values.email,

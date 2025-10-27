@@ -1,0 +1,261 @@
+# Azure DevOps Pipeline para Full-Stack React + Express
+# Se ejecuta en cada push y pull request
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+      - feature/*
+  paths:
+    exclude:
+      - README.md
+      - docs/*
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+
+# Variables globales
+variables:
+  nodeVersion: '20.x'
+  npmVersion: '10.x'
+  buildConfiguration: 'Release'
+
+# Pool de agentes
+pool:
+  vmImage: 'ubuntu-latest'
+
+# Etapas del pipeline
+stages:
+- stage: Build
+  displayName: '🏗️ Build Stage'
+  jobs:
+  - job: BuildJob
+    displayName: 'Build Application'
+    steps:
+    - task: NodeTool@0
+      displayName: '📦 Setup Node.js'
+      inputs:
+        versionSpec: $(nodeVersion)
+        
+    - task: Npm@1
+      displayName: '📥 Install Dependencies'
+      inputs:
+        command: 'ci'
+        workingDir: '.'
+        arguments: '--legacy-peer-deps'
+        
+    - task: Npm@1
+      displayName: '🔍 Run Linting'
+      inputs:
+        command: 'custom'
+        workingDir: '.'
+        customCommand: 'run ci:lint'
+        
+    - task: Npm@1
+      displayName: '🏗️ Build Application'
+      inputs:
+        command: 'custom'
+        workingDir: '.'
+        customCommand: 'run ci:build'
+        
+    - task: PublishBuildArtifacts@1
+      displayName: '📤 Publish Build Artifacts'
+      inputs:
+        pathToPublish: 'dist'
+        artifactName: 'dist'
+        publishLocation: 'Container'
+
+- stage: Test
+  displayName: '🧪 Test Stage'
+  dependsOn: Build
+  jobs:
+  - job: BackendTests
+    displayName: 'Backend Tests'
+    steps:
+    - task: NodeTool@0
+      displayName: '📦 Setup Node.js'
+      inputs:
+        versionSpec: $(nodeVersion)
+        
+    - task: Npm@1
+      displayName: '📥 Install Dependencies'
+      inputs:
+        command: 'ci'
+        workingDir: '.'
+        arguments: '--legacy-peer-deps'
+        
+    - task: Npm@1
+      displayName: '🧪 Run Backend Tests'
+      inputs:
+        command: 'custom'
+        workingDir: '.'
+        customCommand: 'run ci:backend'
+        
+    - task: PublishTestResults@2
+      displayName: '📊 Publish Backend Test Results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/test-results.xml'
+        mergeTestResults: true
+        failTaskOnFailedTests: true
+        
+    - task: PublishCodeCoverageResults@1
+      displayName: '📈 Publish Backend Coverage'
+      inputs:
+        codeCoverageTool: 'Cobertura'
+        summaryFileLocation: 'coverage/cobertura-coverage.xml'
+        reportDirectory: 'coverage'
+        failIfCoverageEmpty: false
+
+  - job: FrontendTests
+    displayName: 'Frontend Tests'
+    steps:
+    - task: NodeTool@0
+      displayName: '📦 Setup Node.js'
+      inputs:
+        versionSpec: $(nodeVersion)
+        
+    - task: Npm@1
+      displayName: '📥 Install Dependencies'
+      inputs:
+        command: 'ci'
+        workingDir: '.'
+        arguments: '--legacy-peer-deps'
+        
+    - task: Npm@1
+      displayName: '🧪 Run Frontend Tests'
+      inputs:
+        command: 'custom'
+        workingDir: '.'
+        customCommand: 'run ci:frontend'
+        
+    - task: PublishTestResults@2
+      displayName: '📊 Publish Frontend Test Results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/test-results.xml'
+        mergeTestResults: true
+        failTaskOnFailedTests: true
+        
+    - task: PublishCodeCoverageResults@1
+      displayName: '📈 Publish Frontend Coverage'
+      inputs:
+        codeCoverageTool: 'Cobertura'
+        summaryFileLocation: 'coverage/cobertura-coverage.xml'
+        reportDirectory: 'coverage'
+        failIfCoverageEmpty: false
+
+- stage: Security
+  displayName: '🔒 Security Stage'
+  dependsOn: Build
+  jobs:
+  - job: SecurityAudit
+    displayName: 'Security Audit'
+    steps:
+    - task: NodeTool@0
+      displayName: '📦 Setup Node.js'
+      inputs:
+        versionSpec: $(nodeVersion)
+        
+    - task: Npm@1
+      displayName: '📥 Install Dependencies'
+      inputs:
+        command: 'ci'
+        workingDir: '.'
+        arguments: '--legacy-peer-deps'
+        
+    - task: Npm@1
+      displayName: '🔒 Run Security Audit'
+      inputs:
+        command: 'custom'
+        workingDir: '.'
+        customCommand: 'run ci:security'
+        
+    - task: Npm@1
+      displayName: '🔍 Run Dependency Check'
+      inputs:
+        command: 'custom'
+        workingDir: '.'
+        customCommand: 'run audit-ci --moderate'
+
+- stage: Deploy
+  displayName: '🚀 Deploy Stage'
+  dependsOn: [Test, Security]
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - deployment: DeployToProduction
+    displayName: 'Deploy to Production'
+    environment: 'Production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: DownloadBuildArtifacts@0
+            displayName: '📥 Download Build Artifacts'
+            inputs:
+              buildType: 'current'
+              downloadType: 'single'
+              artifactName: 'dist'
+              downloadPath: '$(System.ArtifactsDirectory)'
+              
+          - task: ExtractFiles@1
+            displayName: '📦 Extract Artifacts'
+            inputs:
+              archiveFilePatterns: '$(System.ArtifactsDirectory)/dist/*.zip'
+              destinationFolder: '$(System.DefaultWorkingDirectory)/deploy'
+              cleanDestinationFolder: true
+              
+          # Aquí puedes agregar tareas específicas de deploy
+          # Por ejemplo: Azure Web App, Docker, etc.
+          - task: AzureWebApp@1
+            displayName: '🚀 Deploy to Azure Web App'
+            inputs:
+              azureSubscription: 'Your-Azure-Subscription'
+              appName: 'your-app-name'
+              package: '$(System.DefaultWorkingDirectory)/deploy'
+              deploymentMethod: 'zipDeploy'
+              
+          - task: AzureCLI@2
+            displayName: '🔧 Configure App Settings'
+            inputs:
+              azureSubscription: 'Your-Azure-Subscription'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az webapp config appsettings set --name your-app-name --resource-group your-resource-group --settings NODE_ENV=production
+                az webapp config set --name your-app-name --resource-group your-resource-group --startup-file "npm start"
+
+- stage: Notify
+  displayName: '📢 Notification Stage'
+  dependsOn: [Test, Security, Deploy]
+  condition: always()
+  jobs:
+  - job: NotifyJob
+    displayName: 'Send Notifications'
+    steps:
+    - task: PowerShell@2
+      displayName: '✅ Success Notification'
+      condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "🎉 Pipeline completed successfully!"
+          Write-Host "Build: $(Build.BuildNumber)"
+          Write-Host "Branch: $(Build.SourceBranchName)"
+          Write-Host "Commit: $(Build.SourceVersion)"
+          
+    - task: PowerShell@2
+      displayName: '❌ Failure Notification'
+      condition: failed()
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "💥 Pipeline failed!"
+          Write-Host "Build: $(Build.BuildNumber)"
+          Write-Host "Branch: $(Build.SourceBranchName)"
+          Write-Host "Commit: $(Build.SourceVersion)"
+          Write-Host "Please check the logs for details."
