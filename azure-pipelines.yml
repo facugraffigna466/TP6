@@ -28,6 +28,10 @@ variables:
 pool:
   vmImage: 'ubuntu-latest'
 
+# Configuración global de npm
+variables:
+  npm_config_legacy_peer_deps: 'true'
+
 # Etapas del pipeline
 stages:
 - stage: Build
@@ -40,6 +44,13 @@ stages:
       displayName: '📦 Setup Node.js'
       inputs:
         versionSpec: $(nodeVersion)
+        
+    - task: Npm@1
+      displayName: '🔧 Configure npm'
+      inputs:
+        command: 'custom'
+        workingDir: '.'
+        customCommand: 'config set legacy-peer-deps true'
         
     - task: Npm@1
       displayName: '📥 Install Dependencies'
