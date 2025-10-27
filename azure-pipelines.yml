@@ -23,14 +23,11 @@ variables:
   nodeVersion: '20.x'
   npmVersion: '10.x'
   buildConfiguration: 'Release'
+  npm_config_legacy_peer_deps: 'true'
 
 # Pool de agentes
 pool:
   vmImage: 'ubuntu-latest'
-
-# Configuración global de npm
-variables:
-  npm_config_legacy_peer_deps: 'true'
 
 # Etapas del pipeline
 stages:
