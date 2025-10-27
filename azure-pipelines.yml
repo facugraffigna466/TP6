@@ -182,56 +182,56 @@ stages:
         workingDir: '.'
         customCommand: 'run audit-ci --moderate'
 
-- stage: Deploy
-  displayName: '🚀 Deploy Stage'
-  dependsOn: [Test, Security]
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-  jobs:
-  - deployment: DeployToProduction
-    displayName: 'Deploy to Production'
-    environment: 'Production'
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - task: DownloadBuildArtifacts@0
-            displayName: '📥 Download Build Artifacts'
-            inputs:
-              buildType: 'current'
-              downloadType: 'single'
-              artifactName: 'dist'
-              downloadPath: '$(System.ArtifactsDirectory)'
-              
-          - task: ExtractFiles@1
-            displayName: '📦 Extract Artifacts'
-            inputs:
-              archiveFilePatterns: '$(System.ArtifactsDirectory)/dist/*.zip'
-              destinationFolder: '$(System.DefaultWorkingDirectory)/deploy'
-              cleanDestinationFolder: true
-              
-          # Aquí puedes agregar tareas específicas de deploy
-          # Por ejemplo: Azure Web App, Docker, etc.
-          - task: AzureWebApp@1
-            displayName: '🚀 Deploy to Azure Web App'
-            inputs:
-              azureSubscription: 'Your-Azure-Subscription'
-              appName: 'your-app-name'
-              package: '$(System.DefaultWorkingDirectory)/deploy'
-              deploymentMethod: 'zipDeploy'
-              
-          - task: AzureCLI@2
-            displayName: '🔧 Configure App Settings'
-            inputs:
-              azureSubscription: 'Your-Azure-Subscription'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                az webapp config appsettings set --name your-app-name --resource-group your-resource-group --settings NODE_ENV=production
-                az webapp config set --name your-app-name --resource-group your-resource-group --startup-file "npm start"
+# - stage: Deploy
+#   displayName: '🚀 Deploy Stage'
+#   dependsOn: [Test, Security]
+#   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+#   jobs:
+#   - deployment: DeployToProduction
+#     displayName: 'Deploy to Production'
+#     environment: 'Production'
+#     strategy:
+#       runOnce:
+#         deploy:
+#           steps:
+#           - task: DownloadBuildArtifacts@0
+#             displayName: '📥 Download Build Artifacts'
+#             inputs:
+#               buildType: 'current'
+#               downloadType: 'single'
+#               artifactName: 'dist'
+#               downloadPath: '$(System.ArtifactsDirectory)'
+#               
+#           - task: ExtractFiles@1
+#             displayName: '📦 Extract Artifacts'
+#             inputs:
+#               archiveFilePatterns: '$(System.ArtifactsDirectory)/dist/*.zip'
+#               destinationFolder: '$(System.DefaultWorkingDirectory)/deploy'
+#               cleanDestinationFolder: true
+#               
+#           # Aquí puedes agregar tareas específicas de deploy
+#           # Por ejemplo: Azure Web App, Docker, etc.
+#           - task: AzureWebApp@1
+#             displayName: '🚀 Deploy to Azure Web App'
+#             inputs:
+#               azureSubscription: 'Your-Azure-Subscription'
+#               appName: 'your-app-name'
+#               package: '$(System.DefaultWorkingDirectory)/deploy'
+#               deploymentMethod: 'zipDeploy'
+#               
+#           - task: AzureCLI@2
+#             displayName: '🔧 Configure App Settings'
+#             inputs:
+#               azureSubscription: 'Your-Azure-Subscription'
+#               scriptType: 'bash'
+#               scriptLocation: 'inlineScript'
+#               inlineScript: |
+#                 az webapp config appsettings set --name your-app-name --resource-group your-resource-group --settings NODE_ENV=production
+#                 az webapp config set --name your-app-name --resource-group your-resource-group --startup-file "npm start"
 
 - stage: Notify
   displayName: '📢 Notification Stage'
-  dependsOn: [Test, Security, Deploy]
+  dependsOn: [Test, Security]
   condition: always()
   jobs:
   - job: NotifyJob
