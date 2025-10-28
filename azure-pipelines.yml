@@ -24,6 +24,10 @@ variables:
   npmVersion: '10.x'
   buildConfiguration: 'Release'
   npm_config_legacy_peer_deps: 'true'
+  # Variables para Azure (ajustar según tu suscripción)
+  azureSubscription: 'Azure for Students'  # Nombre de tu suscripción
+  resourceGroupName: 'rg-simple-vite-react-express'
+  webAppName: 'simple-vite-react-express-app'
 
 # Pool de agentes
 pool:
@@ -75,6 +79,22 @@ stages:
       inputs:
         pathToPublish: 'dist'
         artifactName: 'dist'
+        publishLocation: 'Container'
+        
+    - task: ArchiveFiles@2
+      displayName: '🗜️ Create Deployment Package'
+      inputs:
+        rootFolderOrFile: 'dist'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/deploy.zip'
+        replaceExistingFile: true
+        
+    - task: PublishBuildArtifacts@1
+      displayName: '📦 Publish Deployment Package'
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)/deploy.zip'
+        artifactName: 'deploy'
         publishLocation: 'Container'
 
 - stage: Test
@@ -190,56 +210,57 @@ stages:
         workingDir: '.'
         customCommand: 'run audit-ci --moderate'
 
-# - stage: Deploy
-#   displayName: '🚀 Deploy Stage'
-#   dependsOn: [Test, Security]
-#   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-#   jobs:
-#   - deployment: DeployToProduction
-#     displayName: 'Deploy to Production'
-#     environment: 'Production'
-#     strategy:
-#       runOnce:
-#         deploy:
-#           steps:
-#           - task: DownloadBuildArtifacts@0
-#             displayName: '📥 Download Build Artifacts'
-#             inputs:
-#               buildType: 'current'
-#               downloadType: 'single'
-#               artifactName: 'dist'
-#               downloadPath: '$(System.ArtifactsDirectory)'
-#               
-#           - task: ExtractFiles@1
-#             displayName: '📦 Extract Artifacts'
-#             inputs:
-#               archiveFilePatterns: '$(System.ArtifactsDirectory)/dist/*.zip'
-#               destinationFolder: '$(System.DefaultWorkingDirectory)/deploy'
-#               cleanDestinationFolder: true
-#               
-#           # Aquí puedes agregar tareas específicas de deploy
-#           # Por ejemplo: Azure Web App, Docker, etc.
-#           - task: AzureWebApp@1
-#             displayName: '🚀 Deploy to Azure Web App'
-#             inputs:
-#               azureSubscription: 'Your-Azure-Subscription'
-#               appName: 'your-app-name'
-#               package: '$(System.DefaultWorkingDirectory)/deploy'
-#               deploymentMethod: 'zipDeploy'
-#               
-#           - task: AzureCLI@2
-#             displayName: '🔧 Configure App Settings'
-#             inputs:
-#               azureSubscription: 'Your-Azure-Subscription'
-#               scriptType: 'bash'
-#               scriptLocation: 'inlineScript'
-#               inlineScript: |
-#                 az webapp config appsettings set --name your-app-name --resource-group your-resource-group --settings NODE_ENV=production
-#                 az webapp config set --name your-app-name --resource-group your-resource-group --startup-file "npm start"
+- stage: Deploy
+  displayName: '🚀 Deploy Stage'
+  dependsOn: [Test, Security]
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - deployment: DeployToProduction
+    displayName: 'Deploy to Production'
+    environment: 'Production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: DownloadBuildArtifacts@0
+            displayName: '📥 Download Build Artifacts'
+            inputs:
+              buildType: 'current'
+              downloadType: 'single'
+              artifactName: 'deploy'
+              downloadPath: '$(System.ArtifactsDirectory)'
+              
+          - task: ExtractFiles@1
+            displayName: '📦 Extract Artifacts'
+            inputs:
+              archiveFilePatterns: '$(System.ArtifactsDirectory)/deploy/deploy.zip'
+              destinationFolder: '$(System.DefaultWorkingDirectory)/deploy'
+              cleanDestinationFolder: true
+              
+          # Deploy a Azure Web App (ajustar según tu configuración)
+          - task: AzureWebApp@1
+            displayName: '🚀 Deploy to Azure Web App'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appName: '$(webAppName)'
+              package: '$(System.DefaultWorkingDirectory)/deploy'
+              deploymentMethod: 'zipDeploy'
+              
+          - task: AzureCLI@2
+            displayName: '🔧 Configure App Settings'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                echo "Configuring Azure Web App settings..."
+                az webapp config appsettings set --name $(webAppName) --resource-group $(resourceGroupName) --settings NODE_ENV=production
+                az webapp config set --name $(webAppName) --resource-group $(resourceGroupName) --startup-file "npm start"
+                echo "Deployment completed successfully!"
 
 - stage: Notify
   displayName: '📢 Notification Stage'
-  dependsOn: [Test, Security]
+  dependsOn: [Test, Security, Deploy]
   condition: always()
   jobs:
   - job: NotifyJob
