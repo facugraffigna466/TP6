@@ -1,0 +1,177 @@
+# Azure DevOps Pipeline para Full-Stack React + Express
+# Pipeline simple y efectivo para deploy en Azure
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+
+# Variables
+variables:
+  nodeVersion: '20.x'
+  buildConfiguration: 'Release'
+
+# Pool de agentes
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+- stage: Build
+  displayName: '🏗️ Build & Test'
+  jobs:
+  - job: BuildJob
+    displayName: 'Build Application'
+    steps:
+    - task: NodeTool@0
+      displayName: '📦 Setup Node.js'
+      inputs:
+        versionSpec: $(nodeVersion)
+        
+    - task: Npm@1
+      displayName: '🔧 Configure npm'
+      inputs:
+        command: 'custom'
+        workingDir: '.'
+        customCommand: 'config set legacy-peer-deps true'
+        
+    - task: Npm@1
+      displayName: '📥 Install Dependencies'
+      inputs:
+        command: 'ci'
+        workingDir: '.'
+        arguments: '--legacy-peer-deps'
+        
+    - task: Npm@1
+      displayName: '🔍 Run Linting'
+      inputs:
+        command: 'custom'
+        workingDir: '.'
+        customCommand: 'run ci:lint'
+        
+    - task: Npm@1
+      displayName: '🧪 Run Tests'
+      inputs:
+        command: 'custom'
+        workingDir: '.'
+        customCommand: 'run test:ci'
+        
+    - task: Npm@1
+      displayName: '🔒 Security Audit'
+      inputs:
+        command: 'custom'
+        workingDir: '.'
+        customCommand: 'run ci:security'
+        
+    - task: Npm@1
+      displayName: '🏗️ Build Application'
+      inputs:
+        command: 'custom'
+        workingDir: '.'
+        customCommand: 'run ci:build'
+        
+    - task: PublishBuildArtifacts@1
+      displayName: '📤 Publish Build Artifacts'
+      inputs:
+        pathToPublish: 'dist'
+        artifactName: 'dist'
+        publishLocation: 'Container'
+        
+    - task: ArchiveFiles@2
+      displayName: '🗜️ Create Deployment Package'
+      inputs:
+        rootFolderOrFile: 'dist'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/deploy.zip'
+        replaceExistingFile: true
+        
+    - task: PublishBuildArtifacts@1
+      displayName: '📦 Publish Deployment Package'
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)/deploy.zip'
+        artifactName: 'deploy'
+        publishLocation: 'Container'
+
+- stage: Deploy
+  displayName: '🚀 Deploy to Azure'
+  dependsOn: Build
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - deployment: DeployToAzure
+    displayName: 'Deploy to Azure Web App'
+    environment: 'Production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: DownloadBuildArtifacts@0
+            displayName: '📥 Download Build Artifacts'
+            inputs:
+              buildType: 'current'
+              downloadType: 'single'
+              artifactName: 'deploy'
+              downloadPath: '$(System.ArtifactsDirectory)'
+              
+          - task: ExtractFiles@1
+            displayName: '📦 Extract Deployment Package'
+            inputs:
+              archiveFilePatterns: '$(System.ArtifactsDirectory)/deploy/deploy.zip'
+              destinationFolder: '$(System.DefaultWorkingDirectory)/deploy'
+              cleanDestinationFolder: true
+              
+          - task: AzureWebApp@1
+            displayName: '🚀 Deploy to Azure Web App'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appName: '$(appName)'
+              package: '$(System.DefaultWorkingDirectory)/deploy'
+              deploymentMethod: 'zipDeploy'
+              
+          - task: AzureCLI@2
+            displayName: '🔧 Configure App Settings'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                echo "Configuring app settings..."
+                az webapp config appsettings set --name $(appName) --resource-group $(resourceGroupName) --settings NODE_ENV=production
+                az webapp config set --name $(appName) --resource-group $(resourceGroupName) --startup-file "npm start"
+                echo "Deployment completed successfully!"
+
+- stage: Notify
+  displayName: '📢 Notifications'
+  dependsOn: [Build, Deploy]
+  condition: always()
+  jobs:
+  - job: NotifyJob
+    displayName: 'Send Notifications'
+    steps:
+    - task: PowerShell@2
+      displayName: '📧 Send Success Notification'
+      condition: and(succeeded(), eq(stageDependencies.Build.BuildJob.result, 'Succeeded'))
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "✅ Pipeline completed successfully!"
+          Write-Host "🚀 Application deployed to Azure"
+          Write-Host "📊 Build: $(Build.BuildNumber)"
+          Write-Host "🌿 Branch: $(Build.SourceBranchName)"
+          
+    - task: PowerShell@2
+      displayName: '❌ Send Failure Notification'
+      condition: or(failed(), cancelled())
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "❌ Pipeline failed!"
+          Write-Host "📊 Build: $(Build.BuildNumber)"
+          Write-Host "🌿 Branch: $(Build.SourceBranchName)"
+          Write-Host "🔍 Check logs for details"
