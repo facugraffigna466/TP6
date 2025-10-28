@@ -210,57 +210,57 @@ stages:
         workingDir: '.'
         customCommand: 'run audit-ci --moderate'
 
-- stage: Deploy
-  displayName: '🚀 Deploy Stage'
-  dependsOn: [Test, Security]
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-  jobs:
-  - deployment: DeployToProduction
-    displayName: 'Deploy to Production'
-    environment: 'Production'
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - task: DownloadBuildArtifacts@0
-            displayName: '📥 Download Build Artifacts'
-            inputs:
-              buildType: 'current'
-              downloadType: 'single'
-              artifactName: 'deploy'
-              downloadPath: '$(System.ArtifactsDirectory)'
-              
-          - task: ExtractFiles@1
-            displayName: '📦 Extract Artifacts'
-            inputs:
-              archiveFilePatterns: '$(System.ArtifactsDirectory)/deploy/deploy.zip'
-              destinationFolder: '$(System.DefaultWorkingDirectory)/deploy'
-              cleanDestinationFolder: true
-              
-          # Deploy a Azure Web App (ajustar según tu configuración)
-          - task: AzureWebApp@1
-            displayName: '🚀 Deploy to Azure Web App'
-            inputs:
-              azureSubscription: '$(azureSubscription)'
-              appName: '$(webAppName)'
-              package: '$(System.DefaultWorkingDirectory)/deploy'
-              deploymentMethod: 'zipDeploy'
-              
-          - task: AzureCLI@2
-            displayName: '🔧 Configure App Settings'
-            inputs:
-              azureSubscription: '$(azureSubscription)'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                echo "Configuring Azure Web App settings..."
-                az webapp config appsettings set --name $(webAppName) --resource-group $(resourceGroupName) --settings NODE_ENV=production
-                az webapp config set --name $(webAppName) --resource-group $(resourceGroupName) --startup-file "npm start"
-                echo "Deployment completed successfully!"
+# - stage: Deploy
+#   displayName: '🚀 Deploy Stage'
+#   dependsOn: [Test, Security]
+#   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+#   jobs:
+#   - deployment: DeployToProduction
+#     displayName: 'Deploy to Production'
+#     environment: 'Production'
+#     strategy:
+#       runOnce:
+#         deploy:
+#           steps:
+#           - task: DownloadBuildArtifacts@0
+#             displayName: '📥 Download Build Artifacts'
+#             inputs:
+#               buildType: 'current'
+#               downloadType: 'single'
+#               artifactName: 'deploy'
+#               downloadPath: '$(System.ArtifactsDirectory)'
+#               
+#           - task: ExtractFiles@1
+#             displayName: '📦 Extract Artifacts'
+#             inputs:
+#               archiveFilePatterns: '$(System.ArtifactsDirectory)/deploy/deploy.zip'
+#               destinationFolder: '$(System.DefaultWorkingDirectory)/deploy'
+#               cleanDestinationFolder: true
+#               
+#           # Deploy a Azure Web App (ajustar según tu configuración)
+#           - task: AzureWebApp@1
+#             displayName: '🚀 Deploy to Azure Web App'
+#             inputs:
+#               azureSubscription: '$(azureSubscription)'
+#               appName: '$(webAppName)'
+#               package: '$(System.DefaultWorkingDirectory)/deploy'
+#               deploymentMethod: 'zipDeploy'
+#               
+#           - task: AzureCLI@2
+#             displayName: '🔧 Configure App Settings'
+#             inputs:
+#               azureSubscription: '$(azureSubscription)'
+#               scriptType: 'bash'
+#               scriptLocation: 'inlineScript'
+#               inlineScript: |
+#                 echo "Configuring Azure Web App settings..."
+#                 az webapp config appsettings set --name $(webAppName) --resource-group $(resourceGroupName) --settings NODE_ENV=production
+#                 az webapp config set --name $(webAppName) --resource-group $(resourceGroupName) --startup-file "npm start"
+#                 echo "Deployment completed successfully!"
 
 - stage: Notify
   displayName: '📢 Notification Stage'
-  dependsOn: [Test, Security, Deploy]
+  dependsOn: [Test, Security]
   condition: always()
   jobs:
   - job: NotifyJob
