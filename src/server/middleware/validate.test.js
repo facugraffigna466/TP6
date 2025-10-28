@@ -1,5 +1,4 @@
 import { celebrate, Joi } from 'celebrate';
-import { contactValidation } from './validate.js';
 
 describe('Validation Middleware', () => {
   describe('contactValidation.create', () => {

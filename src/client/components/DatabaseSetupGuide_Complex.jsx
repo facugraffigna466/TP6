@@ -16,7 +16,6 @@ import {
   Storage as DatabaseIcon,
   PlayArrow as PlayIcon,
   CheckCircle as CheckIcon,
-  Warning as WarningIcon,
   Code as CodeIcon,
 } from '@mui/icons-material';
 

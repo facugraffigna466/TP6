@@ -2,7 +2,6 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import CallToAction from './CallToAction';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import ContactPageIcon from '@mui/icons-material/ContactPage';
 
 // Helper function to render component with Router

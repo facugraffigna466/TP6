@@ -158,10 +158,10 @@ describe('Security Middleware', () => {
       const errorApp = express();
       errorApp.use(securityMiddleware);
       errorApp.use(requestLogger);
-      errorApp.get('/error', (req, res, next) => {
+      errorApp.get('/error', (_req, _res, next) => {
         next(new Error('Test error'));
       });
-      errorApp.use((err, req, res, next) => {
+      errorApp.use((err, _req, _res, _next) => {
         res.status(500).json({ error: err.message });
       });
 

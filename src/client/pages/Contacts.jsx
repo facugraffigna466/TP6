@@ -8,7 +8,6 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import CallToAction from "../components/CallToAction";
 import ConfirmationDialog from "../components/ConfirmationDialog";
 import { toast } from "react-toastify";
-import AppHeroIcon from "../components/AppHeroIcon";
 import AppLoading from "../components/AppLoading";
 import { ContactPage, Group } from "@mui/icons-material";
 

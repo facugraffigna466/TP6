@@ -90,7 +90,7 @@ const createApp = () => {
   app.get('*', (req, res) => res.sendFile(path.resolve('dist', 'index.html')));
   
   // Error handling
-  app.use((err, req, res, next) => {
+  app.use((err, req, res, _next) => {
     console.error('Unhandled error:', err);
     res.status(500).json({
       success: false,
@@ -187,12 +187,12 @@ describe('Express App', () => {
       errorApp.use(cors());
       
       // Create a route that throws an error
-      errorApp.get('/test-error', (req, res, next) => {
+      errorApp.get('/test-error', (_req, _res, _next) => {
         throw new Error('Test error');
       });
       
       // Error handling middleware
-      errorApp.use((err, req, res, next) => {
+      errorApp.use((err, _req, _res, _next) => {
         console.error('Unhandled error:', err);
         res.status(500).json({
           success: false,
@@ -225,12 +225,12 @@ describe('Express App', () => {
       prodApp.use(cors());
       
       // Create a route that throws an error
-      prodApp.get('/test-error-prod', (req, res, next) => {
+      prodApp.get('/test-error-prod', (_req, _res, _next) => {
         throw new Error('Test error');
       });
       
       // Error handling middleware
-      prodApp.use((err, req, res, next) => {
+      prodApp.use((err, _req, _res, _next) => {
         console.error('Unhandled error:', err);
         res.status(500).json({
           success: false,

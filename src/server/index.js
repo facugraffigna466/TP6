@@ -37,7 +37,7 @@ app.get("/", (req, res) => {
 app.get("*", (req, res) => res.sendFile(path.resolve("dist", "index.html")));
 
 // Improved error handling
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error("Unhandled error:", err);
   res.status(500).json({
     success: false,

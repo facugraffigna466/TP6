@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Typography,
@@ -43,7 +43,7 @@ const Tasks = () => {
     URGENT: 'error',
   };
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -60,11 +60,11 @@ const Tasks = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, priorityFilter]);
 
   useEffect(() => {
     fetchTasks();
-  }, [statusFilter, priorityFilter]);
+  }, [statusFilter, priorityFilter, fetchTasks]);
 
   const handleStatusChange = async (taskId, newStatus) => {
     try {

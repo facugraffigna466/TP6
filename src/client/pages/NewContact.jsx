@@ -1,5 +1,4 @@
 import React from "react";
-import { useTheme } from "@mui/material/styles";
 import makeStyles from "@mui/styles/makeStyles";
 import { TextField, Button, Typography, Grid, Box, Container, Card, CardContent } from "@mui/material";
 import { Formik, Field, ErrorMessage } from "formik";
@@ -18,7 +17,6 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const NewContact = () => {
-  const theme = useTheme();
   const classes = useStyles(); // Add this line to use the styles
 
   const ContactSchema = Yup.object().shape({
@@ -29,7 +27,7 @@ const NewContact = () => {
 
   const handleContactSubmit = async (values, { resetForm }) => {
     try {
-      const response = await axios.post("/api/v1/contact", {
+      await axios.post("/api/v1/contact", {
         firstName: values.firstName,
         lastName: values.lastName,
         email: values.email,
