@@ -129,7 +129,7 @@ stages:
           - task: AzureWebApp@1
             displayName: '🚀 Deploy to Azure Web App'
             inputs:
-              azureSubscription: '$(azureSubscription)'
+              azureSubscription: 'Azure-Student-Subscription'
               appName: '$(appName)'
               package: '$(System.DefaultWorkingDirectory)/deploy'
               deploymentMethod: 'zipDeploy'
@@ -137,7 +137,7 @@ stages:
           - task: AzureCLI@2
             displayName: '🔧 Configure App Settings'
             inputs:
-              azureSubscription: '$(azureSubscription)'
+              azureSubscription: 'Azure-Student-Subscription'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |

@@ -1,29 +1,59 @@
+/**
+ * @jest-environment node
+ */
+
 import request from 'supertest';
 import express from 'express';
+import { errors } from 'celebrate';
 import contactRoutes from '../v1/contact.route.js';
 import contactService from '../../services/contact.service.js';
 
-// Mock the contact service
-jest.mock('../../services/contact.service.js', () => ({
-  findAll: jest.fn(),
-  findById: jest.fn(),
-  create: jest.fn(),
-  update: jest.fn(),
-  delete: jest.fn(),
-}));
+var mockContactService;
 
-// Mock the validation middleware
-jest.mock('../../middleware/validate.js', () => ({
-  contactValidation: {
-    create: (req, res, next) => next(),
-    update: (req, res, next) => next(),
-  },
-}));
+jest.mock('../../services/contact.service.js', () => {
+  mockContactService = {
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  };
+
+  return {
+    __esModule: true,
+    default: mockContactService,
+  };
+});
 
 // Create Express app for testing
 const app = express();
 app.use(express.json());
 app.use('/api/contacts', contactRoutes);
+app.use(errors());
+app.use((err, req, res, next) => {
+  if (err && (err.joi || err.details)) {
+    return res.status(err.statusCode || 400).json({
+      success: false,
+      data: null,
+      message: err.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+  if (err && err.type === 'entity.parse.failed') {
+    return res.status(400).json({
+      success: false,
+      data: null,
+      message: 'Invalid JSON payload',
+      timestamp: new Date().toISOString(),
+    });
+  }
+  return res.status(err.statusCode || 500).json({
+    success: false,
+    data: null,
+    message: err.message || 'Internal Server Error',
+    timestamp: new Date().toISOString(),
+  });
+});
 
 describe('Contact Routes', () => {
   beforeEach(() => {

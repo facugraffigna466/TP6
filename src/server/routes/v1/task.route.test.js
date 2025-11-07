@@ -1,22 +1,60 @@
+/**
+ * @jest-environment node
+ */
+
 import request from 'supertest';
 import express from 'express';
+import { errors } from 'celebrate';
 import taskRoutes from '../v1/task.route.js';
 import * as taskService from '../../services/task.service.js';
 
-// Mock the task service
-jest.mock('../../services/task.service.js', () => ({
-  findAll: jest.fn(),
-  findById: jest.fn(),
-  create: jest.fn(),
-  update: jest.fn(),
-  remove: jest.fn(),
-  updateStatus: jest.fn(),
-}));
+var mockTaskService;
+
+jest.mock('../../services/task.service.js', () => {
+  mockTaskService = {
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
+    updateStatus: jest.fn(),
+  };
+
+  return {
+    __esModule: true,
+    ...mockTaskService,
+  };
+});
 
 // Create Express app for testing
 const app = express();
 app.use(express.json());
 app.use('/api/tasks', taskRoutes);
+app.use(errors());
+app.use((err, req, res, next) => {
+  if (err && (err.joi || err.details)) {
+    return res.status(err.statusCode || 400).json({
+      success: false,
+      data: null,
+      message: err.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+  if (err && err.type === 'entity.parse.failed') {
+    return res.status(400).json({
+      success: false,
+      data: null,
+      message: 'Invalid JSON payload',
+      timestamp: new Date().toISOString(),
+    });
+  }
+  return res.status(err.statusCode || 500).json({
+    success: false,
+    data: null,
+    message: err.message || 'Internal Server Error',
+    timestamp: new Date().toISOString(),
+  });
+});
 
 describe('Task Routes', () => {
   beforeEach(() => {

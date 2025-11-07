@@ -17,43 +17,62 @@ global.console = {
 };
 
 // Mock fetch globally
-global.fetch = jest.fn();
+if (typeof global.fetch === 'undefined') {
+  global.fetch = jest.fn();
+}
 
-// Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: jest.fn().mockImplementation(query => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: jest.fn(), // deprecated
-    removeListener: jest.fn(), // deprecated
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
-});
+if (typeof window !== 'undefined') {
+  // Mock window.matchMedia
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: jest.fn().mockImplementation(query => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: jest.fn(), // deprecated
+      removeListener: jest.fn(), // deprecated
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    })),
+  });
+
+}
 
 // Mock IntersectionObserver
-global.IntersectionObserver = class IntersectionObserver {
-  constructor() {}
-  disconnect() {}
-  observe() {}
-  unobserve() {}
-};
+if (typeof global.IntersectionObserver === 'undefined') {
+  class IntersectionObserver {
+    disconnect() {}
+    observe() {}
+    unobserve() {}
+  }
+  global.IntersectionObserver = IntersectionObserver;
+  if (typeof window !== 'undefined') {
+    window.IntersectionObserver = IntersectionObserver;
+  }
+}
 
 // Mock ResizeObserver
-global.ResizeObserver = class ResizeObserver {
-  constructor() {}
-  disconnect() {}
-  observe() {}
-  unobserve() {}
-};
+if (typeof global.ResizeObserver === 'undefined') {
+  class ResizeObserver {
+    disconnect() {}
+    observe() {}
+    unobserve() {}
+  }
+  global.ResizeObserver = ResizeObserver;
+  if (typeof window !== 'undefined') {
+    window.ResizeObserver = ResizeObserver;
+  }
+}
 
 // Mock TextEncoder and TextDecoder for React Router
 const { TextEncoder, TextDecoder } = require('util');
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder;
+if (typeof global.TextEncoder === 'undefined') {
+  global.TextEncoder = TextEncoder;
+}
+if (typeof global.TextDecoder === 'undefined') {
+  global.TextDecoder = TextDecoder;
+}
 
 // Setup and teardown for each test
 beforeEach(() => {

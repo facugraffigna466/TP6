@@ -1,3 +1,7 @@
+/**
+ * @jest-environment node
+ */
+
 // Mock the database
 jest.mock('../../services/database.js', () => ({
   prisma: {
@@ -26,34 +30,58 @@ jest.mock('../../services/database.js', () => ({
 }));
 
 // Mock the services
-jest.mock('../../services/contact.service.js', () => ({
-  default: {
+var mockContactService;
+var mockTaskService;
+var mockProjectService;
+
+jest.mock('../../services/contact.service.js', () => {
+  mockContactService = {
     findAll: jest.fn().mockResolvedValue([]),
     findById: jest.fn().mockResolvedValue(null),
     create: jest.fn().mockResolvedValue({ id: 1, firstName: 'John', lastName: 'Doe', email: 'john@example.com' }),
     update: jest.fn().mockResolvedValue({ id: 1, firstName: 'John', lastName: 'Doe', email: 'john@example.com' }),
     delete: jest.fn().mockResolvedValue({ id: 1, firstName: 'John', lastName: 'Doe', email: 'john@example.com' }),
-  },
-}));
+  };
 
-jest.mock('../../services/task.service.js', () => ({
-  findAll: jest.fn().mockResolvedValue([]),
-  findById: jest.fn().mockResolvedValue(null),
-  create: jest.fn().mockResolvedValue({ id: 1, title: 'Test Task' }),
-  update: jest.fn().mockResolvedValue({ id: 1, title: 'Test Task' }),
-  remove: jest.fn().mockResolvedValue(true),
-}));
+  return {
+    __esModule: true,
+    default: mockContactService,
+  };
+});
 
-jest.mock('../../services/project.service.js', () => ({
-  findAll: jest.fn().mockResolvedValue([]),
-  findById: jest.fn().mockResolvedValue(null),
-  create: jest.fn().mockResolvedValue({ id: 1, name: 'Test Project' }),
-  update: jest.fn().mockResolvedValue({ id: 1, name: 'Test Project' }),
-  remove: jest.fn().mockResolvedValue(true),
-}));
+jest.mock('../../services/task.service.js', () => {
+  mockTaskService = {
+    findAll: jest.fn().mockResolvedValue([]),
+    findById: jest.fn().mockResolvedValue(null),
+    create: jest.fn().mockResolvedValue({ id: 1, title: 'Test Task' }),
+    update: jest.fn().mockResolvedValue({ id: 1, title: 'Test Task' }),
+    remove: jest.fn().mockResolvedValue(true),
+  };
+
+  return {
+    __esModule: true,
+    ...mockTaskService,
+  };
+});
+
+jest.mock('../../services/project.service.js', () => {
+  mockProjectService = {
+    findAll: jest.fn().mockResolvedValue([]),
+    findById: jest.fn().mockResolvedValue(null),
+    create: jest.fn().mockResolvedValue({ id: 1, name: 'Test Project' }),
+    update: jest.fn().mockResolvedValue({ id: 1, name: 'Test Project' }),
+    remove: jest.fn().mockResolvedValue(true),
+  };
+
+  return {
+    __esModule: true,
+    ...mockProjectService,
+  };
+});
 
 import request from 'supertest';
 import express from 'express';
+import { errors } from 'celebrate';
 import routes from './index.js';
 
 // Create Express app for testing
@@ -61,6 +89,39 @@ const createApp = () => {
   const app = express();
   app.use(express.json());
   app.use('/api/v1/', routes);
+  app.use(errors());
+  app.use((err, req, res, next) => {
+    if (err && (err.joi || err.details)) {
+      return res.status(err.statusCode || 400).json({
+        success: false,
+        data: null,
+        message: err.message,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    if (err && err.type === 'entity.parse.failed') {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: 'Invalid JSON payload',
+        timestamp: new Date().toISOString(),
+      });
+    }
+    return res.status(err.statusCode || 500).json({
+      success: false,
+      data: null,
+      message: err.message || 'Internal Server Error',
+      timestamp: new Date().toISOString(),
+    });
+  });
+  app.use((req, res) => {
+    res.status(404).json({
+      success: false,
+      data: null,
+      message: 'Not Found',
+      timestamp: new Date().toISOString(),
+    });
+  });
   return app;
 };
 

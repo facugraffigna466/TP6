@@ -1,24 +1,62 @@
+/**
+ * @jest-environment node
+ */
+
 import request from 'supertest';
 import express from 'express';
+import { errors } from 'celebrate';
 import projectRoutes from '../v1/project.route.js';
 import * as projectService from '../../services/project.service.js';
 
-// Mock the project service
-jest.mock('../../services/project.service.js', () => ({
-  findAll: jest.fn(),
-  findById: jest.fn(),
-  create: jest.fn(),
-  update: jest.fn(),
-  remove: jest.fn(),
-  addMember: jest.fn(),
-  getMembers: jest.fn(),
-  removeMember: jest.fn(),
-}));
+var mockProjectService;
+
+jest.mock('../../services/project.service.js', () => {
+  mockProjectService = {
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
+    addMember: jest.fn(),
+    getMembers: jest.fn(),
+    removeMember: jest.fn(),
+  };
+
+  return {
+    __esModule: true,
+    ...mockProjectService,
+  };
+});
 
 // Create Express app for testing
 const app = express();
 app.use(express.json());
 app.use('/api/projects', projectRoutes);
+app.use(errors());
+app.use((err, req, res, next) => {
+  if (err && (err.joi || err.details)) {
+    return res.status(err.statusCode || 400).json({
+      success: false,
+      data: null,
+      message: err.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+  if (err && err.type === 'entity.parse.failed') {
+    return res.status(400).json({
+      success: false,
+      data: null,
+      message: 'Invalid JSON payload',
+      timestamp: new Date().toISOString(),
+    });
+  }
+  return res.status(err.statusCode || 500).json({
+    success: false,
+    data: null,
+    message: err.message || 'Internal Server Error',
+    timestamp: new Date().toISOString(),
+  });
+});
 
 describe('Project Routes', () => {
   beforeEach(() => {
@@ -159,7 +197,13 @@ describe('Project Routes', () => {
         message: 'Project created successfully',
         timestamp: expect.any(String),
       });
-      expect(projectService.create).toHaveBeenCalledWith(projectData);
+      expect(projectService.create).toHaveBeenCalledWith(expect.objectContaining({
+        name: 'New Project',
+        description: 'Project description',
+        status: 'active',
+        startDate: expect.any(Date),
+        endDate: expect.any(Date),
+      }));
     });
 
     it('should validate required fields', async () => {
@@ -214,7 +258,10 @@ describe('Project Routes', () => {
         message: 'Project updated successfully',
         timestamp: expect.any(String),
       });
-      expect(projectService.update).toHaveBeenCalledWith(1, updateData);
+      expect(projectService.update).toHaveBeenCalledWith(1, expect.objectContaining({
+        status: 'completed',
+        endDate: expect.any(Date),
+      }));
     });
 
     it('should return 404 when project not found', async () => {
