@@ -30,7 +30,7 @@ const app = express();
 app.use(express.json());
 app.use('/api/contacts', contactRoutes);
 app.use(errors());
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   if (err && (err.joi || err.details)) {
     return res.status(err.statusCode || 400).json({
       success: false,
