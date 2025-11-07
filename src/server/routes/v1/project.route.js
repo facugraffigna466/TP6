@@ -70,7 +70,15 @@ router.get('/:id', celebrate(projectIdSchema), async (req, res) => {
 
 router.post('/create', celebrate(createProjectSchema), async (req, res) => {
   try {
-    const project = await projectService.create(req.body);
+    const projectPayload = { ...req.body };
+    if (projectPayload.startDate) {
+      projectPayload.startDate = new Date(projectPayload.startDate);
+    }
+    if (projectPayload.endDate) {
+      projectPayload.endDate = new Date(projectPayload.endDate);
+    }
+
+    const project = await projectService.create(projectPayload);
     res.status(201).json(successResponse(project, 'Project created successfully'));
   } catch (error) {
     console.error('Error creating project:', error);
@@ -80,7 +88,15 @@ router.post('/create', celebrate(createProjectSchema), async (req, res) => {
 
 router.put('/:id', celebrate({ ...projectIdSchema, ...updateProjectSchema }), async (req, res) => {
   try {
-    const project = await projectService.update(parseInt(req.params.id), req.body);
+    const projectPayload = { ...req.body };
+    if (projectPayload.startDate) {
+      projectPayload.startDate = new Date(projectPayload.startDate);
+    }
+    if (projectPayload.endDate) {
+      projectPayload.endDate = new Date(projectPayload.endDate);
+    }
+
+    const project = await projectService.update(parseInt(req.params.id), projectPayload);
     if (!project) {
       return res.status(404).json(errorResponse('Project not found'));
     }
