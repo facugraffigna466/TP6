@@ -10,7 +10,7 @@ The workflow triggers on pushes and pull requests targeting `main` or `master`.
 
 1. **Build & Test job**
    - Checks out the code.
-   - Installs Node 20 with npm caching.
+   - Installs Node 20 with npm caching (uses `npm ci --legacy-peer-deps` to satisfy the `mui-file-input` peer requirement).
    - Runs `npm ci`, `npm run lint`, `npm run test:ci`, and `npm run build`.
    - Prunes dev dependencies from `node_modules` and zips the repository (excluding Git metadata and coverage).
    - Uploads `dist.zip` as a workflow artifact (ready for manual deployment).
